@@ -1,0 +1,25 @@
+# Web Framework
+fastapi>=0.110.0
+uvicorn>=0.28.0
+websockets>=12.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# System & Hardware Metrics
+psutil>=5.9.0
+
+# Deep Learning
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Image & Audio Processing
+pillow>=10.2.0
+opencv-python>=4.9.0
+numpy<2.0.0
+librosa>=0.10.1
+soundfile>=0.12.1
+
+# Data Models
+pydantic>=2.6.0

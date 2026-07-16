@@ -1,0 +1,40 @@
+# ==========================================
+# ROOT GITIGNORE - IGNORE HEAVY MODELS & VIRTUAL ENVS
+# ==========================================
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Heavy AI & PyTorch Model Weights (700MB+ files)
+*.pth
+*.pt
+*.onnx
+*.h5
+*.pkl
+
+# Large Audio Datasets & Recordings
+*.wav
+*.mp3
+*.flac
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
