@@ -345,15 +345,15 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
                     if fear_key in idx_map:
                         probs[idx_map[fear_key]] *= 0.20
                     note = f"Forceful/High Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> ANGRY"
-            # 2. Lower volume/pitch -> SAD takes over
-            elif raw_volume < 0.012 and cent_val < 900:
-                probs[idx_map["sad"]] += 0.55
-                probs[idx_map["neutral"]] *= 0.35
-                probs[idx_map["angry"]] *= 0.25
+            # 2. Lower volume/pitch -> SAD takes over (Boosted according to low voice profile)
+            elif raw_volume < 0.022 and cent_val < 1100:
+                probs[idx_map["sad"]] += 0.65
+                probs[idx_map["neutral"]] *= 0.30
+                probs[idx_map["angry"]] *= 0.20
                 if fear_key in idx_map:
                     probs[idx_map[fear_key]] *= 0.20
-                note = f"Lower Volume/Pitch Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> SAD"
-            # 3. Conversational speech (0.012 to 0.10 volume) -> Anchored to NEUTRAL (~60%)
+                note = f"Lower Volume/Pitch Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> Boosted SAD"
+            # 3. Conversational speech (0.022 to 0.10 volume) -> Anchored to NEUTRAL (~60%)
             else:
                 probs[idx_map["sad"]] *= 0.35
                 probs[idx_map["angry"]] *= 0.35
@@ -376,7 +376,7 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
             note = f"Quiet/Silence ({raw_volume:.4f}) -> Anchored to NEUTRAL (~60%)"
             
         # Ensure NEUTRAL confidence stays around ~60% during normal/conversational speech without blocking ANGRY/SAD
-        if raw_volume < 0.10 and not (raw_volume >= 0.0003 and (raw_volume < 0.012 and cent_val < 900)):
+        if raw_volume < 0.10 and not (raw_volume >= 0.0003 and (raw_volume < 0.022 and cent_val < 1100)):
             neg_keys = [idx_map["sad"], idx_map["angry"]]
             if fear_key in idx_map:
                 neg_keys.append(idx_map[fear_key])
