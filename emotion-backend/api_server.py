@@ -27,6 +27,7 @@ TOTAL_PREDICTIONS = 333
 LOW_CONFIDENCE_PREDICTIONS = 1
 INFERENCE_TIMESTAMPS = []
 LAST_SYNC_DELAY = 12
+LAST_ACTIVE_SPEECH_RESULT = None
 
 VALID_API_KEY = os.getenv("BACKEND_API_KEY", os.getenv("VALID_API_KEY", "FYP_SECURE_KEY_8f9c2b4e7d1a5m3q"))
 
@@ -410,6 +411,14 @@ def process_audio_pipeline(file_path, original_filename):
             trimmed_audio = audio
             
         cues = get_acoustic_cues(trimmed_audio)
+        
+        # When stopped talking / pause / silence during live tracking, hold the last active spoken emotion!
+        global LAST_ACTIVE_SPEECH_RESULT
+        if is_live and raw_volume < 0.016 and LAST_ACTIVE_SPEECH_RESULT is not None:
+            last_emotion, last_conf, last_prob_dict, last_anomaly, last_note = LAST_ACTIVE_SPEECH_RESULT
+            shimmer_val = cues['energy_variability'] * 10.0 if cues.get('energy_variability', 0) > 0 else cues['zcr'] * 10.0
+            ui_cues = {'energy': cues['energy'], 'pitch': cues['pitch'], 'zcr': cues['zcr'], 'shimmer': shimmer_val}
+            return last_emotion, last_conf, last_prob_dict, ui_cues, last_anomaly, f"Stopped Talking ({raw_volume:.4f}) -> Held Last Active Emotion: {last_emotion.upper()}"
             
         if is_live:
             mx_buffer = np.max(np.abs(trimmed_audio))
@@ -492,6 +501,10 @@ def process_audio_pipeline(file_path, original_filename):
         shimmer_val = cues['energy_variability'] * 10.0 if cues.get('energy_variability', 0) > 0 else cues['zcr'] * 10.0
         ui_cues = {'energy': cues['energy'], 'pitch': cues['pitch'], 'zcr': cues['zcr'], 'shimmer': shimmer_val}
         
+        if is_live and raw_volume >= 0.016:
+            global LAST_ACTIVE_SPEECH_RESULT
+            LAST_ACTIVE_SPEECH_RESULT = (final_emotion, final_conf, prob_dict, is_anomaly, rule_note)
+            
         return final_emotion, final_conf, prob_dict, ui_cues, is_anomaly, rule_note
     
     except Exception as e:
