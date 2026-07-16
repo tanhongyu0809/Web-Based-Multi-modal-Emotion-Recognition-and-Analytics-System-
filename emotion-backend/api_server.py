@@ -345,15 +345,15 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
                     if fear_key in idx_map:
                         probs[idx_map[fear_key]] *= 0.20
                     note = f"Forceful/High Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> ANGRY"
-            # 2. Small/softer voice -> SAD takes over (Balanced sweet spot between 0.022 and 0.045)
-            elif raw_volume < 0.032 or (raw_volume < 0.040 and cent_val < 1200):
+            # 2. Small/softer voice -> Boosted SAD (Floor >= 0.015 ensures trailing-off at end of speech goes to NEUTRAL instead of SAD)
+            elif 0.015 <= raw_volume < 0.032 and cent_val < 1150:
                 probs[idx_map["sad"]] += 0.65
                 probs[idx_map["neutral"]] *= 0.30
                 probs[idx_map["angry"]] *= 0.20
                 if fear_key in idx_map:
                     probs[idx_map[fear_key]] *= 0.20
                 note = f"Small/Softer Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> Boosted SAD"
-            # 3. Conversational speech -> Anchored to NEUTRAL (~60%)
+            # 3. Conversational / Trailing-off speech -> Anchored to NEUTRAL (~60%)
             else:
                 probs[idx_map["sad"]] *= 0.35
                 probs[idx_map["angry"]] *= 0.35
@@ -362,7 +362,7 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
                 probs[idx_map["neutral"]] += 0.70  # Calibrated for ~60% neutral confidence
                 if "calm" in idx_map:
                     probs[idx_map["calm"]] += 0.25
-                note = f"Conversational Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL (~60%)"
+                note = f"Conversational/Trailing Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL (~60%)"
                 
         else:
             # Genuinely near-silent or background room noise -> Anchored to NEUTRAL (~60%)
@@ -376,7 +376,7 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
             note = f"Quiet/Silence ({raw_volume:.4f}) -> Anchored to NEUTRAL (~60%)"
             
         # Ensure NEUTRAL confidence stays around ~60% during normal/conversational speech without blocking ANGRY/SAD
-        if raw_volume < 0.10 and not (raw_volume >= 0.0003 and (raw_volume < 0.032 or (raw_volume < 0.040 and cent_val < 1200))):
+        if raw_volume < 0.10 and not (0.015 <= raw_volume < 0.032 and cent_val < 1150):
             neg_keys = [idx_map["sad"], idx_map["angry"]]
             if fear_key in idx_map:
                 neg_keys.append(idx_map[fear_key])
