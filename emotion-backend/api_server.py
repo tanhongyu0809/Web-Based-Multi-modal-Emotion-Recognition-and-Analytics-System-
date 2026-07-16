@@ -332,53 +332,53 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
         print(f"    [LIVE DEBUG] raw_volume={raw_volume:.4f}, centroid={cent_val:.0f}")
         
         # Volume Zones — calibrated for browser microphone via ScriptProcessorNode
-        # Browser mic RMS is typically 0.005–0.03 for normal speech at 22050Hz.
         if raw_volume >= 0.0003:
-            # Audible active speech -> Responsive & Balanced Multi-Emotion Calibration
-            # 1. Genuine forceful loud shouting -> requires volume > 0.18 AND high vocal sharpness
-            if raw_volume > 0.18 and zcr_val > 0.18:
-                if cent_val > 2000:
-                    probs[idx_map["happy"]] += 0.25
-                    note = f"Loud Upbeat Voice ({raw_volume:.3f}) -> HAPPY"
-                else:
-                    probs[idx_map["angry"]] += 0.15
-                    probs[idx_map["neutral"]] += 0.35
-                    note = f"Forceful Shouting ({raw_volume:.3f}) -> NEUTRAL/ANGRY"
-            # 2. Soft, low-energy sighing -> NEUTRAL > SAD
-            elif raw_volume < 0.005 and cent_val < 680:
-                probs[idx_map["neutral"]] += 0.60
-                probs[idx_map["sad"]] += 0.15
-                note = f"Soft Low Voice ({raw_volume:.3f}) -> NEUTRAL > SAD"
-            # 3. Standard conversational speech -> Anchored strongly toward NEUTRAL (BOOSTED)
+            # 1. High volume or pitch -> ANGRY takes over
+            if raw_volume >= 0.022 or cent_val >= 1400:
+                probs[idx_map["angry"]] += 0.55
+                probs[idx_map["neutral"]] *= 0.35
+                probs[idx_map["sad"]] *= 0.25
+                if fear_key in idx_map:
+                    probs[idx_map[fear_key]] *= 0.20
+                note = f"Higher Volume/Pitch Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> ANGRY"
+            # 2. Lower volume or pitch -> SAD takes over
+            elif raw_volume < 0.012 or cent_val < 900:
+                probs[idx_map["sad"]] += 0.55
+                probs[idx_map["neutral"]] *= 0.35
+                probs[idx_map["angry"]] *= 0.25
+                if fear_key in idx_map:
+                    probs[idx_map[fear_key]] *= 0.20
+                note = f"Lower Volume/Pitch Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> SAD"
+            # 3. Conversational speech -> Anchored to NEUTRAL (~60%)
             else:
                 probs[idx_map["sad"]] *= 0.35
                 probs[idx_map["angry"]] *= 0.35
                 if fear_key in idx_map:
                     probs[idx_map[fear_key]] *= 0.35
-                probs[idx_map["neutral"]] += 1.30  # Boosted from 0.65 to make neutral much stronger
+                probs[idx_map["neutral"]] += 0.70  # Calibrated for ~60% neutral confidence
                 if "calm" in idx_map:
-                    probs[idx_map["calm"]] += 0.30
-                note = f"Natural Conversational Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL"
+                    probs[idx_map["calm"]] += 0.25
+                note = f"Conversational Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL (~60%)"
                 
         else:
-            # Genuinely near-silent or background room noise -> Strong Anchor to NEUTRAL (BOOSTED)
-            probs[idx_map["neutral"]] += 1.60  # Boosted from 0.70 for silence/quiet
+            # Genuinely near-silent or background room noise -> Anchored to NEUTRAL (~60%)
+            probs[idx_map["neutral"]] += 0.85  # Calibrated for ~60% neutral during silence
             if "calm" in idx_map:
-                probs[idx_map["calm"]] += 0.35
-            probs[idx_map["sad"]] *= 0.15
-            probs[idx_map["angry"]] *= 0.15
+                probs[idx_map["calm"]] += 0.30
+            probs[idx_map["sad"]] *= 0.20
+            probs[idx_map["angry"]] *= 0.20
             if fear_key in idx_map:
-                probs[idx_map[fear_key]] *= 0.15
-            note = f"Quiet/Silence ({raw_volume:.4f}) -> Strong Anchor to NEUTRAL"
+                probs[idx_map[fear_key]] *= 0.20
+            note = f"Quiet/Silence ({raw_volume:.4f}) -> Anchored to NEUTRAL (~60%)"
             
-        # Ensure NEUTRAL confidence is always higher compared to ANGER, FEARFUL, and SAD across all normal active speech
-        if raw_volume < 0.18:
+        # Ensure NEUTRAL confidence stays around ~60% during normal/conversational speech without blocking ANGRY/SAD
+        if raw_volume < 0.022 and not (raw_volume >= 0.0003 and (raw_volume < 0.012 or cent_val < 900)):
             neg_keys = [idx_map["sad"], idx_map["angry"]]
             if fear_key in idx_map:
                 neg_keys.append(idx_map[fear_key])
             max_neg = max([probs[k] for k in neg_keys])
             if max_neg > probs[idx_map["neutral"]]:
-                probs[idx_map["neutral"]] = max_neg * 1.80  # Boosted from 1.35x to guarantee higher neutral confidence
+                probs[idx_map["neutral"]] = max_neg * 1.35  # Exact original 1.35x so neutral stays around ~60%
                 
         total = probs.sum()
         if total > 0:
