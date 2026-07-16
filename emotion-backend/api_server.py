@@ -325,30 +325,31 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
     try:
         # Hiss & Fear Suppressor (from Cell 4 live calibration)
         probs[idx_map["disgust"]] *= 0.20
-        probs[idx_map["fear"]] *= 0.25  # Lower fearful during live mic capture
+        probs[idx_map["fear"]] *= 0.20  # Lower fearful during live mic capture
         
         # Debug: Print raw volume so we can see actual mic levels
         print(f"    [LIVE DEBUG] raw_volume={raw_volume:.4f}, centroid={cent_val:.0f}")
         
         # Volume Zones — calibrated for browser microphone via ScriptProcessorNode
         if raw_volume >= 0.0003:
-            # 1. Higher volume or pitch -> ANGRY takes over
-            if raw_volume >= 0.038 or cent_val >= 1650:
-                probs[idx_map["angry"]] += 0.60
-                probs[idx_map["sad"]] *= 0.20
-                probs[idx_map["neutral"]] *= 0.30
-                probs[idx_map["fear"]] *= 0.20
+            # 1. Higher volume or pitch -> ANGRY takes over cleanly
+            if raw_volume >= 0.022 or cent_val >= 1400:
+                probs[idx_map["angry"]] += 0.70
+                probs[idx_map["sad"]] *= 0.15
+                probs[idx_map["neutral"]] *= 0.20
+                probs[idx_map["fear"]] *= 0.15
                 note = f"Higher Volume/Pitch Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> ANGRY"
             # 2. Soft, low-energy sighing -> NEUTRAL > SAD
             elif raw_volume < 0.005 and cent_val < 680:
                 probs[idx_map["neutral"]] += 0.40
                 probs[idx_map["sad"]] += 0.15
                 note = f"Soft Low Voice ({raw_volume:.3f}) -> NEUTRAL > SAD"
-            # 3. Soft/conversational speech (< 0.038 volume) -> Anchored toward NEUTRAL
+            # 3. Soft/conversational speech (< 0.022 volume) -> Anchored toward NEUTRAL
             else:
-                probs[idx_map["sad"]] *= 0.35
-                probs[idx_map["angry"]] *= 0.35
-                probs[idx_map["neutral"]] += 0.65
+                probs[idx_map["sad"]] *= 0.25
+                probs[idx_map["angry"]] *= 0.25
+                probs[idx_map["fear"]] *= 0.25
+                probs[idx_map["neutral"]] += 0.75
                 if "calm" in idx_map:
                     probs[idx_map["calm"]] += 0.30
                 note = f"Soft Conversational Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL"
@@ -363,8 +364,8 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
             probs[idx_map["fear"]] *= 0.15
             note = f"Quiet/Silence ({raw_volume:.4f}) -> Strong Anchor to NEUTRAL"
             
-        # Ensure NEUTRAL confidence is only forced above negative emotions when speaking softly (volume < 0.038)
-        if raw_volume < 0.038:
+        # Ensure NEUTRAL confidence is only forced above negative emotions when speaking softly (volume < 0.022)
+        if raw_volume < 0.022:
             max_neg = max(probs[idx_map["sad"]], probs[idx_map["angry"]], probs[idx_map["fear"]])
             if max_neg > probs[idx_map["neutral"]]:
                 probs[idx_map["neutral"]] = max_neg * 1.35
