@@ -21,7 +21,7 @@ try:
     app.json.sort_keys = False
 except AttributeError:
     pass
-CORS(app) 
+CORS(app, resources={r"/*": {"origins": "*", "allow_headers": ["*", "X-API-Key", "Content-Type", "Authorization"], "methods": ["GET", "POST", "OPTIONS"]}})
 LAST_INFERENCE_MS = 42
 TOTAL_PREDICTIONS = 333
 LOW_CONFIDENCE_PREDICTIONS = 1
@@ -33,6 +33,8 @@ VALID_API_KEY = os.getenv("BACKEND_API_KEY", os.getenv("VALID_API_KEY", "FYP_SEC
 def require_api_key(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return '', 200
         extracted_key = request.headers.get('X-API-Key')
         if extracted_key and extracted_key == VALID_API_KEY:
             return func(*args, **kwargs)

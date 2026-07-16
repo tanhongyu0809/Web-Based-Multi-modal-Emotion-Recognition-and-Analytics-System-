@@ -568,7 +568,8 @@ export default function VoiceEmotionInterface() {
       }
     } catch (error) {
       console.error("API Error:", error);
-      addLog("System Error: Could not connect to backend API server on port 8000 or 5000.", true);
+      const cloudUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      addLog(cloudUrl ? `System Error: Could not connect to cloud backend (${cloudUrl}).` : "System Error: Could not connect to backend API server on port 8000 or 5000.", true);
     }
   };
 
