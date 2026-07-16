@@ -399,6 +399,7 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
 # 5. CORE ROUTER PIPELINE
 # ==========================================
 def process_audio_pipeline(file_path, original_filename):
+    global LAST_ACTIVE_SPEECH_RESULT
     is_live = (original_filename == "live_capture.wav")
     
     try:
@@ -413,7 +414,6 @@ def process_audio_pipeline(file_path, original_filename):
         cues = get_acoustic_cues(trimmed_audio)
         
         # When stopped talking / pause / silence during live tracking, hold the last active spoken emotion!
-        global LAST_ACTIVE_SPEECH_RESULT
         if is_live and raw_volume < 0.016 and LAST_ACTIVE_SPEECH_RESULT is not None:
             last_emotion, last_conf, last_prob_dict, last_anomaly, last_note = LAST_ACTIVE_SPEECH_RESULT
             shimmer_val = cues['energy_variability'] * 10.0 if cues.get('energy_variability', 0) > 0 else cues['zcr'] * 10.0
@@ -502,7 +502,6 @@ def process_audio_pipeline(file_path, original_filename):
         ui_cues = {'energy': cues['energy'], 'pitch': cues['pitch'], 'zcr': cues['zcr'], 'shimmer': shimmer_val}
         
         if is_live and raw_volume >= 0.016:
-            global LAST_ACTIVE_SPEECH_RESULT
             LAST_ACTIVE_SPEECH_RESULT = (final_emotion, final_conf, prob_dict, is_anomaly, rule_note)
             
         return final_emotion, final_conf, prob_dict, ui_cues, is_anomaly, rule_note
