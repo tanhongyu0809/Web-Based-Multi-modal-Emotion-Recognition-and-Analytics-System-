@@ -333,15 +333,15 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
         
         # Volume Zones — calibrated for browser microphone via ScriptProcessorNode
         if raw_volume >= 0.0003:
-            # 1. Genuine forceful loud shouting/high voice -> requires volume > 0.10 AND sharpness > 0.12 (or volume > 0.12)
-            if (raw_volume > 0.10 and zcr_val > 0.12) or raw_volume > 0.12:
+            # 1. Voice higher/louder -> ANGRY takes over (Lowered slightly so raising voice triggers ANGRY easier)
+            if raw_volume >= 0.082 or (raw_volume >= 0.070 and cent_val >= 1600) or (raw_volume >= 0.065 and zcr_val >= 0.14):
                 if cent_val > 2200 and zcr_val > 0.18:
                     probs[idx_map["happy"]] += 0.25
                     note = f"Loud Upbeat Voice ({raw_volume:.3f}) -> HAPPY"
                 else:
-                    probs[idx_map["angry"]] += 0.55
-                    probs[idx_map["neutral"]] *= 0.35
-                    probs[idx_map["sad"]] *= 0.25
+                    probs[idx_map["angry"]] += 0.65
+                    probs[idx_map["neutral"]] *= 0.30
+                    probs[idx_map["sad"]] *= 0.20
                     if fear_key in idx_map:
                         probs[idx_map[fear_key]] *= 0.20
                     note = f"Forceful/High Voice ({raw_volume:.3f}, {cent_val:.0f}Hz) -> ANGRY"
@@ -376,7 +376,7 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
             note = f"Quiet/Silence ({raw_volume:.4f}) -> Anchored to NEUTRAL (~60%)"
             
         # Ensure NEUTRAL confidence stays around ~60% during normal/conversational speech without blocking ANGRY/SAD
-        if raw_volume < 0.10 and not (raw_volume >= 0.0003 and (raw_volume < 0.036 or (raw_volume < 0.043 and cent_val < 1300))):
+        if raw_volume < 0.082 and not (raw_volume >= 0.070 and cent_val >= 1600) and not (raw_volume >= 0.065 and zcr_val >= 0.14) and not (raw_volume >= 0.0003 and (raw_volume < 0.036 or (raw_volume < 0.043 and cent_val < 1300))):
             neg_keys = [idx_map["sad"], idx_map["angry"]]
             if fear_key in idx_map:
                 neg_keys.append(idx_map[fear_key])
