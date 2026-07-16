@@ -321,11 +321,12 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
     probs = probs.copy()
     idx_map = {c: i for i, c in enumerate(classes_list)}
     note = "Live: Processed."
+    fear_key = "fearful" if "fearful" in idx_map else "fear"
     
     try:
-        # Hiss & Fear Suppressor (from Cell 4 in Real_FYP_original.ipynb)
-        probs[idx_map["disgust"]] *= 0.20
-        probs[idx_map["fear"]] *= 0.18  # Strong suppression to prevent random FEARFUL spikes
+        # Hiss Suppressor (from Cell 4 in Real_FYP_original.ipynb)
+        if "disgust" in idx_map:
+            probs[idx_map["disgust"]] *= 0.20
         
         # Debug: Print raw volume so we can see actual mic levels
         print(f"    [LIVE DEBUG] raw_volume={raw_volume:.4f}, centroid={cent_val:.0f}")
@@ -345,40 +346,46 @@ def apply_cell4_live_rules(probs, classes_list, raw_volume, zcr_val, cent_val):
                     note = f"Forceful Shouting ({raw_volume:.3f}) -> NEUTRAL/ANGRY"
             # 2. Soft, low-energy sighing -> NEUTRAL > SAD
             elif raw_volume < 0.005 and cent_val < 680:
-                probs[idx_map["neutral"]] += 0.80
+                probs[idx_map["neutral"]] += 0.60
                 probs[idx_map["sad"]] += 0.15
                 note = f"Soft Low Voice ({raw_volume:.3f}) -> NEUTRAL > SAD"
-            # 3. Standard conversational speech -> Anchored strongly toward NEUTRAL
+            # 3. Standard conversational speech -> Anchored strongly toward NEUTRAL (BOOSTED)
             else:
-                probs[idx_map["sad"]] *= 0.25
-                probs[idx_map["angry"]] *= 0.25
-                probs[idx_map["fear"]] *= 0.15
-                probs[idx_map["neutral"]] += 1.40  # Boosted addition to make neutral confidence significantly higher
+                probs[idx_map["sad"]] *= 0.35
+                probs[idx_map["angry"]] *= 0.35
+                if fear_key in idx_map:
+                    probs[idx_map[fear_key]] *= 0.35
+                probs[idx_map["neutral"]] += 1.30  # Boosted from 0.65 to make neutral much stronger
                 if "calm" in idx_map:
                     probs[idx_map["calm"]] += 0.30
                 note = f"Natural Conversational Speech ({raw_volume:.3f}) -> Anchored to NEUTRAL"
                 
         else:
-            # Genuinely near-silent or background room noise -> Strong Anchor to NEUTRAL
-            probs[idx_map["neutral"]] += 1.60  # Strong anchor to boost neutral confidence during quiet
+            # Genuinely near-silent or background room noise -> Strong Anchor to NEUTRAL (BOOSTED)
+            probs[idx_map["neutral"]] += 1.60  # Boosted from 0.70 for silence/quiet
             if "calm" in idx_map:
                 probs[idx_map["calm"]] += 0.35
-            probs[idx_map["sad"]] *= 0.10
-            probs[idx_map["angry"]] *= 0.10
-            probs[idx_map["fear"]] *= 0.10
+            probs[idx_map["sad"]] *= 0.15
+            probs[idx_map["angry"]] *= 0.15
+            if fear_key in idx_map:
+                probs[idx_map[fear_key]] *= 0.15
             note = f"Quiet/Silence ({raw_volume:.4f}) -> Strong Anchor to NEUTRAL"
             
         # Ensure NEUTRAL confidence is always higher compared to ANGER, FEARFUL, and SAD across all normal active speech
         if raw_volume < 0.18:
-            max_neg = max(probs[idx_map["sad"]], probs[idx_map["angry"]], probs[idx_map["fear"]])
-            if max_neg > probs[idx_map["neutral"]] * 0.70:
-                probs[idx_map["neutral"]] = max_neg * 1.80  # Elevated multiplier to guarantee strong neutral confidence
+            neg_keys = [idx_map["sad"], idx_map["angry"]]
+            if fear_key in idx_map:
+                neg_keys.append(idx_map[fear_key])
+            max_neg = max([probs[k] for k in neg_keys])
+            if max_neg > probs[idx_map["neutral"]]:
+                probs[idx_map["neutral"]] = max_neg * 1.80  # Boosted from 1.35x to guarantee higher neutral confidence
                 
         total = probs.sum()
         if total > 0:
             probs = probs / total
             
-    except (ValueError, KeyError):
+    except Exception as e:
+        print(f"    [LIVE RULES ERROR] {e}")
         pass
         
     return probs, note
