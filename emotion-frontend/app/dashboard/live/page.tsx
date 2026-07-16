@@ -81,12 +81,25 @@ export default function LiveCameraInterface() {
     const targetModel = activeModel === "adamw" ? "resnet152" : "adamw";
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
-      const response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/model/switch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model_name: targetModel })
-      });
+      const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+      let response: Response | null = null;
+      if (backendUrl) {
+        try {
+          response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/model/switch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model_name: targetModel })
+          });
+          if (!response.ok) response = null;
+        } catch (e) { response = null; }
+      }
+      if (!response) {
+        response = await fetch("http://127.0.0.1:8000/api/model/switch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model_name: targetModel })
+        });
+      }
 
       const data = await response.json();
       if (data.status === "success") {
@@ -406,6 +419,18 @@ useEffect(() => {
           setStatusMessage("Active Monitoring");
           setResults(data);
           latestResults.current = data; // Sync ref for database saver
+        }
+      };
+
+      wsRef.current.onerror = () => {
+        if (wsUrl !== "ws://127.0.0.1:8000") {
+          console.log("Cloud WebSocket failed or asleep, falling back to local uvicorn ws://127.0.0.1:8000...");
+          wsRef.current = new WebSocket("ws://127.0.0.1:8000/ws/analyze/live");
+          wsRef.current.onopen = () => setStatusMessage("Active Monitoring (Localhost)");
+          wsRef.current.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (!data.error) { setResults(data); latestResults.current = data; }
+          };
         }
       };
 

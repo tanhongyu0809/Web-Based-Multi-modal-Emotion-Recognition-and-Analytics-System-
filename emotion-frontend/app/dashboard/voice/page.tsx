@@ -458,15 +458,22 @@ export default function VoiceEmotionInterface() {
       const backendApiKey = process.env.NEXT_PUBLIC_BACKEND_API_KEY || "FYP_SECURE_KEY_8f9c2b4e7d1a5m3q";
       const cloudBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-      let response: Response;
+      let response: Response | null = null;
       if (cloudBackendUrl) {
-        response = await fetch(`${cloudBackendUrl.replace(/\/$/, '')}/api/analyze-voice`, {
-          method: "POST",
-          headers: { "X-API-Key": backendApiKey },
-          body: formData,
-        });
-      } else {
-        // Try local FastAPI on port 8000 first, fallback to Flask port 5000
+        try {
+          response = await fetch(`${cloudBackendUrl.replace(/\/$/, '')}/api/analyze-voice`, {
+            method: "POST",
+            headers: { "X-API-Key": backendApiKey },
+            body: formData,
+          });
+          if (!response.ok) response = null;
+        } catch (e) {
+          response = null;
+        }
+      }
+
+      if (!response) {
+        // Fallback to local FastAPI on port 8000 first, fallback to Flask port 5000
         response = await fetch("http://localhost:8000/api/analyze-voice", {
           method: "POST",
           headers: { "X-API-Key": backendApiKey },
