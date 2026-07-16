@@ -11,10 +11,10 @@ __pycache__/
 
 # Heavy AI & PyTorch Model Weights (700MB+ files)
 *.pth
-*.pt
 *.onnx
 *.h5
 *.pkl
+!hybrid_emotion_model.pt
 
 # Large Audio Datasets & Recordings
 *.wav
