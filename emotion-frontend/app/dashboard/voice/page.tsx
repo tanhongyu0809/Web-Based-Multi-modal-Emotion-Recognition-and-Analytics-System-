@@ -714,6 +714,19 @@ export default function VoiceEmotionInterface() {
         }
       };
 
+      rec.onend = () => {
+        if (speechRecognitionRef.current && !isPausedRef.current) {
+          try {
+            rec.start();
+          } catch (e) { }
+        }
+      };
+
+      rec.onerror = (event: any) => {
+        if (event.error === 'no-speech') return;
+        console.warn("Speech recognition warning:", event.error);
+      };
+
       rec.start();
       speechRecognitionRef.current = rec;
     } catch (e) {
