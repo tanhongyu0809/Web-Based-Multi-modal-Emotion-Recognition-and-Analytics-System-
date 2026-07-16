@@ -81,7 +81,8 @@ export default function LiveCameraInterface() {
     const targetModel = activeModel === "adamw" ? "resnet152" : "adamw";
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/model/switch", {
+      const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      const response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/model/switch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model_name: targetModel })
@@ -376,7 +377,9 @@ useEffect(() => {
       setStatusMessage("Connecting to stream...");
 
       // 1. Connect to Python Backend
-      wsRef.current = new WebSocket("ws://127.0.0.1:8000/ws/analyze/live");
+      const baseBackendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      const wsUrl = baseBackendUrl.replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://').replace(/\/$/, '');
+      wsRef.current = new WebSocket(`${wsUrl}/ws/analyze/live`);
 
       wsRef.current.onopen = () => {
         setStatusMessage("Active Monitoring");

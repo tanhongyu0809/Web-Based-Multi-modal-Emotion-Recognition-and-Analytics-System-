@@ -56,7 +56,8 @@ export default function StaticImageInterface() {
     const targetModel = activeModel === "adamw" ? "resnet152" : "adamw";
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/model/switch", {
+      const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      const response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/model/switch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model_name: targetModel })
@@ -291,7 +292,8 @@ export default function StaticImageInterface() {
       formData.append("file", selectedFile);
 
       // 1. Send to Python AI
-      const response = await fetch("http://127.0.0.1:8000/api/analyze/static", {
+      const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      const response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/analyze/static`, {
         method: "POST",
         body: formData,
       });
